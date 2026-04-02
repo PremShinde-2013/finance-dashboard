@@ -36,6 +36,7 @@ app.get('/health', (_req, res) => {
         data: {
             service: 'finance-dashboard-api',
             status: 'ok',
+            notice: 'If the server was inactive, the first request may take 2-3 minutes while Render wakes it up.',
             timestamp: new Date().toISOString(),
         },
     });
@@ -48,6 +49,7 @@ app.get('/api/v1/health', (_req, res) => {
             service: 'finance-dashboard-api',
             status: 'ok',
             version: 'v1',
+            notice: 'If the server was inactive, the first request may take 2-3 minutes while Render wakes it up.',
             timestamp: new Date().toISOString(),
         },
     });

@@ -29,6 +29,9 @@ const options = {
         '4. Click **Authorize** in Swagger UI.',
         '5. Paste `Bearer <token>` into the bearer token field.',
         '6. Click **Authorize**, then call protected endpoints.',
+        '',
+        '## Render Cold Start Note',
+        'If the backend has been inactive, the first request may take 2-3 minutes while Render spins the service back up.',
       ].join('\n'),
     },
     servers: [

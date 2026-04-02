@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackendWarmupCard } from '@/components/shared/backend-warmup-card';
 import { useLogin } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/authStore';
 
@@ -95,6 +96,10 @@ export default function LoginPage() {
                     </section>
 
                     <section className="bg-white/85 p-6 sm:p-8 md:p-10">
+                        <div className="mb-4">
+                            <BackendWarmupCard visible={login.isPending} />
+                        </div>
+
                         <Card className="border-none bg-transparent shadow-none">
                             <CardHeader className="px-0 pt-0">
                                 <div className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">

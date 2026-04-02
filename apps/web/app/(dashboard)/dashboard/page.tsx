@@ -8,6 +8,7 @@ import { MagicCard } from '@/components/ui/magic-card';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BackendWarmupCard } from '@/components/shared/backend-warmup-card';
 import {
     useDashboardCategoryBreakdown,
     useDashboardComparison,
@@ -48,10 +49,13 @@ export default function DashboardPage() {
 
     const expenseBreakdown = categoryBreakdown.filter((item: { type: string; }) => item.type === 'expense');
     const pieColors = ['#EF4444', '#F97316', '#F59E0B', '#EC4899', '#A855F7', '#3B82F6', '#10B981', '#6B7280'];
+    const showWarmupCard = summaryLoading && !summary;
 
     return (
         <div>
             <PageHeader title="Overview" subtitle="Real-time cashflow and balance health." />
+
+            <BackendWarmupCard visible={showWarmupCard} className="mb-4" />
 
             <div className="mb-4 grid gap-3 rounded-xl border border-white/50 bg-white/70 p-3 md:grid-cols-3">
                 <div>
