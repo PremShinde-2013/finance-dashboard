@@ -9,8 +9,9 @@
 
 Monorepo finance dashboard with an Express API, a Next.js frontend, Supabase PostgreSQL, role-based access control, audit logging, and a chart-heavy reporting UI.
 
-- Live demo: add your deployed URL here
-- Repository: add your repository URL here
+- Live demo (Web Login): https://finance-dashboard-web.vercel.app/login
+- Live API docs (Swagger): https://finance-dashboard-7cno.onrender.com/api/docs/
+- Repository: https://github.com/PremShinde-2013/finance-dashboard
 
 ## 1. Project Identity
 
@@ -203,6 +204,9 @@ The seed pipeline is idempotent and currently creates 3 users, 14 categories, an
 - Local: `http://localhost:3000/api/v1`
 - Swagger UI: `http://localhost:3000/api/docs`
 - Swagger JSON: `http://localhost:3000/api/docs.json`
+- Production API: `https://finance-dashboard-7cno.onrender.com/api/v1`
+- Production Swagger UI: `https://finance-dashboard-7cno.onrender.com/api/docs/`
+- Production Swagger JSON: `https://finance-dashboard-7cno.onrender.com/api/docs.json`
 
 ### Auth Header Format
 
@@ -471,11 +475,13 @@ Suggested placement:
 
 ### API
 - Suggested hosting: Railway or Render
-- Production base URL: add your live API URL here
+- Production base URL: https://finance-dashboard-7cno.onrender.com/api/v1
+- Production Swagger UI: https://finance-dashboard-7cno.onrender.com/api/docs/
 
 ### Web
 - Suggested hosting: Vercel
-- Production base URL: add your live web URL here
+- Production base URL: https://finance-dashboard-web.vercel.app
+- Production login URL: https://finance-dashboard-web.vercel.app/login
 
 ### Post-deploy checklist
 - Set production environment variables

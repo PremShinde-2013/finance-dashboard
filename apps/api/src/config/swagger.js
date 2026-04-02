@@ -11,16 +11,33 @@ const options = {
     info: {
       title: 'Finance Dashboard API',
       version: '1.0.0',
-      description: 'Backend API docs for Finance Dashboard (Auth, Users, Categories, Transactions, Dashboard).',
+      description: [
+        'Backend API docs for Finance Dashboard (Auth, Users, Categories, Transactions, Dashboard).',
+        '',
+        'Swagger URL: https://finance-dashboard-7cno.onrender.com/api/docs/',
+        'Frontend URL: https://finance-dashboard-web.vercel.app/login',
+        '',
+        '## Demo Accounts',
+        '- Admin: admin@finance.dev / Password: Admin@1234',
+        '- Analyst: analyst@finance.dev / Password: Analyst@1234',
+        '- Viewer: viewer@finance.dev / Password: Viewer@1234',
+        '',
+        '## How To Use Bearer Authorization',
+        '1. Open `POST /api/v1/auth/login` and login with one of the demo accounts.',
+        '2. Copy the `token` value from the response.',
+        '3. Click the **Authorize** button at the top of Swagger UI.',
+        '4. Enter: `Bearer <token>` and click **Authorize**.',
+        '5. Call protected endpoints. Re-login when token expires.',
+      ].join('\n'),
     },
     servers: [
       ...(normalizedServerUrl
         ? [
-            {
-              url: normalizedServerUrl,
-              description: 'Deployed server',
-            },
-          ]
+          {
+            url: normalizedServerUrl,
+            description: 'Deployed server',
+          },
+        ]
         : []),
       {
         url: 'http://localhost:3000',
