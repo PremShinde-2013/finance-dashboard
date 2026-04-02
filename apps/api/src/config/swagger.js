@@ -18,16 +18,17 @@ const options = {
         'Frontend URL: https://finance-dashboard-web.vercel.app/login',
         '',
         '## Demo Accounts',
-        '- Admin: admin@finance.dev / Password: Admin@1234',
-        '- Analyst: analyst@finance.dev / Password: Analyst@1234',
-        '- Viewer: viewer@finance.dev / Password: Viewer@1234',
+        '- Admin: admin@finance.dev / Admin@1234',
+        '- Analyst: analyst@finance.dev / Analyst@1234',
+        '- Viewer: viewer@finance.dev / Viewer@1234',
         '',
         '## How To Use Bearer Authorization',
-        '1. Open `POST /api/v1/auth/login` and login with one of the demo accounts.',
-        '2. Copy the `token` value from the response.',
-        '3. Click the **Authorize** button at the top of Swagger UI.',
-        '4. Enter: `Bearer <token>` and click **Authorize**.',
-        '5. Call protected endpoints. Re-login when token expires.',
+        '1. Open `POST /api/v1/auth/login`.',
+        '2. Login with one of the demo accounts above.',
+        '3. Copy the `token` value from the login response.',
+        '4. Click **Authorize** in Swagger UI.',
+        '5. Paste `Bearer <token>` into the bearer token field.',
+        '6. Click **Authorize**, then call protected endpoints.',
       ].join('\n'),
     },
     servers: [
@@ -91,7 +92,16 @@ const options = {
 const swaggerSpec = swaggerJsdoc(options);
 
 function setupSwagger(app) {
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
+  app.use(
+    '/api/docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      explorer: true,
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    })
+  );
   app.get('/api/docs.json', (_req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpec);

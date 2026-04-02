@@ -1,10 +1,525 @@
+openapi: 3.0.3
 tags:
   - name: Health
+    description: Runtime and API health checks.
   - name: Auth
+    description: Registration, login, profile, and token refresh.
   - name: Users
+    description: Admin-only user management.
   - name: Categories
+    description: Category management for income and expense buckets.
   - name: Transactions
+    description: Transaction CRUD, filtering, and soft/hard delete flows.
   - name: Dashboard
+    description: Summary cards and analytics endpoints.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiSuccess:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          nullable: true
+        meta:
+          nullable: true
+    ApiError:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+        totalPages:
+          type: integer
+          example: 5
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+        status:
+          type: string
+          enum: [active, inactive]
+        avatar_url:
+          type: string
+          nullable: true
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AuthTokens:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Access token used in the Authorization header.
+        refreshToken:
+          type: string
+          description: Refresh token used to request a new access token.
+        user:
+          $ref: '#/components/schemas/AuthUser'
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      example:
+        email: admin@finance.dev
+        password: Admin@1234
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      example:
+        name: Viewer User
+        email: viewer@finance.dev
+        password: Viewer@1234
+    UpdateMeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+      example:
+        name: Updated User
+        avatar_url: https://example.com/avatar.png
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+      example:
+        current_password: Admin@1234
+        new_password: Admin@5678
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+      example:
+        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.refresh
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+        status:
+          type: string
+          enum: [active, inactive]
+        avatar_url:
+          type: string
+          nullable: true
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateUserRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+        status:
+          type: string
+          enum: [active, inactive]
+        avatar_url:
+          type: string
+          nullable: true
+      example:
+        name: Analyst User
+        email: analyst.new@finance.dev
+        password: Analyst@1234
+        role: analyst
+        status: active
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+        status:
+          type: string
+          enum: [active, inactive]
+        avatar_url:
+          type: string
+          nullable: true
+    UpdateUserRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [admin, analyst, viewer]
+      example:
+        role: viewer
+    UpdateUserStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, inactive]
+      example:
+        status: inactive
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        color:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        is_default:
+          type: boolean
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateCategoryRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        color:
+          type: string
+          example: '#22c55e'
+        icon:
+          type: string
+          example: briefcase
+        is_default:
+          type: boolean
+      example:
+        name: Freelance
+        type: income
+        color: '#22c55e'
+        icon: briefcase
+        is_default: false
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        color:
+          type: string
+          example: '#ef4444'
+        icon:
+          type: string
+        is_default:
+          type: boolean
+    TransactionCategoryRelation:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        color:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        amount:
+          type: number
+          format: float
+        type:
+          type: string
+          enum: [income, expense]
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        is_deleted:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          type: string
+          format: uuid
+          nullable: true
+        updated_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        categories:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TransactionCategoryRelation'
+    CreateTransactionRequest:
+      type: object
+      required: [amount, type, date]
+      properties:
+        amount:
+          type: number
+          example: 1250.5
+        type:
+          type: string
+          enum: [income, expense]
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        notes:
+          type: string
+        category_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        tags:
+          type: array
+          items:
+            type: string
+      example:
+        amount: 1250.5
+        type: expense
+        date: '2026-04-02'
+        description: Groceries
+        notes: Monthly supermarket run
+        category_id: 11111111-1111-1111-1111-111111111111
+        tags: [food, home]
+    UpdateTransactionRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+        type:
+          type: string
+          enum: [income, expense]
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        notes:
+          type: string
+        category_id:
+          type: string
+          format: uuid
+        tags:
+          type: array
+          items:
+            type: string
+      example:
+        amount: 1400
+        description: Groceries and household items
+        tags: [food, household]
+    DashboardSummary:
+      type: object
+      properties:
+        income:
+          type: number
+        expense:
+          type: number
+        net:
+          type: number
+        count:
+          type: integer
+    CategoryBreakdownItem:
+      type: object
+      properties:
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        color:
+          type: string
+          nullable: true
+        total:
+          type: number
+    RecentActivityItem:
+      allOf:
+        - $ref: '#/components/schemas/Transaction'
+    MonthlyTrendItem:
+      type: object
+      properties:
+        month:
+          type: string
+          example: '2026-04'
+        income:
+          type: number
+        expense:
+          type: number
+    WeeklyTrendItem:
+      type: object
+      properties:
+        week:
+          type: string
+          example: Week 1
+        income:
+          type: number
+        expense:
+          type: number
+    ComparisonResponse:
+      type: object
+      properties:
+        current:
+          $ref: '#/components/schemas/DashboardSummary'
+        previous:
+          $ref: '#/components/schemas/DashboardSummary'
+        change:
+          type: object
+          properties:
+            incomePercent:
+              type: number
+            expensePercent:
+              type: number
+            netPercent:
+              type: number
 
 paths:
   /health:
@@ -14,6 +529,17 @@ paths:
       responses:
         '200':
           description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+              example:
+                success: true
+                message: API is running
+                data:
+                  service: finance-dashboard-api
+                  status: ok
+                  timestamp: '2026-04-02T00:00:00.000Z'
 
   /api/v1/health:
     get:
@@ -22,26 +548,120 @@ paths:
       responses:
         '200':
           description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+              example:
+                success: true
+                message: API v1 is running
+                data:
+                  service: finance-dashboard-api
+                  status: ok
+                  version: v1
+                  timestamp: '2026-04-02T00:00:00.000Z'
 
   /api/v1/auth/register:
     post:
       tags: [Auth]
       summary: Register viewer account
+      description: Creates a viewer account by default.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
-          description: Account created
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+              example:
+                success: true
+                message: Registration successful
+                data:
+                  token: example-access-token
+                  refreshToken: example-refresh-token
+                  user:
+                    id: 11111111-1111-1111-1111-111111111111
+                    name: Viewer User
+                    email: viewer@finance.dev
+                    role: viewer
+                    status: active
+                    avatar_url: null
+                    last_login_at: null
+                    created_at: '2026-04-02T00:00:00.000Z'
+                    updated_at: '2026-04-02T00:00:00.000Z'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/auth/login:
     post:
       tags: [Auth]
       summary: Login and receive tokens
+      description: Use one of the demo accounts listed in Swagger UI and copy the access token into the Authorize dialog.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
           description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+              example:
+                success: true
+                message: Login successful
+                data:
+                  token: example-access-token
+                  refreshToken: example-refresh-token
+                  user:
+                    id: 22222222-2222-2222-2222-222222222222
+                    name: Admin User
+                    email: admin@finance.dev
+                    role: admin
+                    status: active
+                    avatar_url: null
+                    last_login_at: '2026-04-02T00:00:00.000Z'
+                    created_at: '2026-04-02T00:00:00.000Z'
+                    updated_at: '2026-04-02T00:00:00.000Z'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Inactive account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/auth/logout:
     post:
@@ -52,8 +672,21 @@ paths:
       responses:
         '200':
           description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+              example:
+                success: true
+                message: Logout successful
+                data:
+                  success: true
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/auth/me:
     get:
@@ -63,21 +696,47 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Profile fetched
+          description: Profile fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     put:
       tags: [Auth]
       summary: Update current user profile
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeRequest'
       responses:
         '200':
-          description: Profile updated
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/auth/me/password:
     put:
@@ -85,56 +744,178 @@ paths:
       summary: Change current user password
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
       responses:
         '200':
-          description: Password changed
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/auth/refresh:
     post:
       tags: [Auth]
       summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
       responses:
         '200':
-          description: Token refreshed
+          description: Access token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
-          description: Invalid refresh token
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/users:
     get:
       tags: [Users]
-      summary: List users (admin)
+      summary: List users
+      description: Admin only.
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [admin, analyst, viewer]
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, inactive]
+        - in: query
+          name: search
+          schema:
+            type: string
       responses:
         '200':
-          description: Users fetched
+          description: Users fetched successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+              example:
+                success: true
+                message: Users fetched successfully
+                data:
+                  - id: 33333333-3333-3333-3333-333333333333
+                    name: Admin User
+                    email: admin@finance.dev
+                    role: admin
+                    status: active
+                    avatar_url: null
+                    last_login_at: '2026-04-02T00:00:00.000Z'
+                    created_at: '2026-04-02T00:00:00.000Z'
+                    updated_at: '2026-04-02T00:00:00.000Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 3
+                  totalPages: 1
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     post:
       tags: [Users]
-      summary: Create user (admin)
+      summary: Create user
+      description: Admin only.
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
       responses:
         '201':
-          description: User created
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/users/{id}:
     get:
       tags: [Users]
-      summary: Get user by id (admin)
+      summary: Get user by id
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -143,18 +924,36 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: User fetched
+          description: User fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     put:
       tags: [Users]
-      summary: Update user (admin)
+      summary: Update user
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -163,20 +962,48 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
       responses:
         '200':
-          description: User updated
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     delete:
       tags: [Users]
-      summary: Soft delete user (admin)
+      summary: Soft delete user
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -185,18 +1012,32 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: User deleted
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/users/{id}/role:
     patch:
       tags: [Users]
-      summary: Update user role (admin)
+      summary: Update user role
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -205,20 +1046,44 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRoleRequest'
       responses:
         '200':
-          description: Role updated
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/users/{id}/status:
     patch:
       tags: [Users]
-      summary: Update user status (admin)
+      summary: Update user status
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -227,20 +1092,44 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
       responses:
         '200':
-          description: Status updated
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/users/{id}/hard:
     delete:
       tags: [Users]
-      summary: Hard delete user (admin)
+      summary: Hard delete user
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -249,13 +1138,26 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: User permanently deleted
+          description: User permanently deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/categories:
     get:
@@ -265,23 +1167,54 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Categories fetched
+          description: Categories fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     post:
       tags: [Categories]
-      summary: Create category (admin)
+      summary: Create category
+      description: Admin only.
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
       responses:
         '201':
-          description: Category created
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/categories/{id}:
     get:
@@ -295,16 +1228,30 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: Category fetched
+          description: Category fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     put:
       tags: [Categories]
-      summary: Update category (admin)
+      summary: Update category
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -313,18 +1260,42 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
       responses:
         '200':
-          description: Category updated
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     delete:
       tags: [Categories]
-      summary: Delete category (admin)
+      summary: Delete category
+      description: Admin only. Default categories cannot be deleted.
       security:
         - bearerAuth: []
       parameters:
@@ -333,13 +1304,32 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: Category deleted
+          description: Category deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/transactions:
     get:
@@ -347,25 +1337,152 @@ paths:
       summary: List transactions
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [income, expense]
+        - in: query
+          name: category_id
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: min_amount
+          schema:
+            type: number
+        - in: query
+          name: max_amount
+          schema:
+            type: number
+        - in: query
+          name: tags
+          schema:
+            type: string
+          description: Comma-separated tag list.
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [date, amount, created_at, updated_at, type]
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            enum: [asc, desc]
+        - in: query
+          name: include_deleted
+          schema:
+            type: string
+            enum: ['true', 'false']
       responses:
         '200':
-          description: Transactions fetched
+          description: Transactions fetched successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+              example:
+                success: true
+                message: Transactions fetched successfully
+                data:
+                  - id: 44444444-4444-4444-4444-444444444444
+                    user_id: 33333333-3333-3333-3333-333333333333
+                    category_id: 55555555-5555-5555-5555-555555555555
+                    amount: 1250.5
+                    type: expense
+                    date: '2026-04-02'
+                    description: Groceries
+                    notes: Monthly supermarket run
+                    tags: [food, home]
+                    is_deleted: false
+                    deleted_at: null
+                    created_by: 33333333-3333-3333-3333-333333333333
+                    updated_by: 33333333-3333-3333-3333-333333333333
+                    created_at: '2026-04-02T00:00:00.000Z'
+                    updated_at: '2026-04-02T00:00:00.000Z'
+                    categories:
+                      name: Food
+                      type: expense
+                      color: '#ef4444'
+                      icon: shopping-cart
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 1
+                  totalPages: 1
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     post:
       tags: [Transactions]
-      summary: Create transaction (admin or analyst)
+      summary: Create transaction
+      description: Admin or analyst only.
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
       responses:
         '201':
-          description: Transaction created
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/transactions/{id}:
     get:
@@ -379,16 +1496,30 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: Transaction fetched
+          description: Transaction fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     put:
       tags: [Transactions]
-      summary: Update transaction (admin or analyst)
+      summary: Update transaction
+      description: Admin or analyst only.
       security:
         - bearerAuth: []
       parameters:
@@ -397,18 +1528,42 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTransactionRequest'
       responses:
         '200':
-          description: Transaction updated
+          description: Transaction updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
     delete:
       tags: [Transactions]
-      summary: Soft delete transaction (admin or analyst)
+      summary: Soft delete transaction
+      description: Admin or analyst only.
       security:
         - bearerAuth: []
       parameters:
@@ -417,18 +1572,32 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: Transaction deleted
+          description: Transaction deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/transactions/{id}/hard:
     delete:
       tags: [Transactions]
-      summary: Hard delete transaction (admin)
+      summary: Hard delete transaction
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -437,18 +1606,32 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Transaction permanently deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/transactions/{id}/restore:
     patch:
       tags: [Transactions]
-      summary: Restore transaction (admin)
+      summary: Restore transaction
+      description: Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -457,13 +1640,26 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
-          description: Transaction restored
+          description: Transaction restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/dashboard/summary:
     get:
@@ -471,11 +1667,30 @@ paths:
       summary: Dashboard summary metrics
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date
       responses:
         '200':
-          description: Summary fetched
+          description: Dashboard summary fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/dashboard/category-breakdown:
     get:
@@ -483,11 +1698,30 @@ paths:
       summary: Category expense breakdown
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date
       responses:
         '200':
-          description: Breakdown fetched
+          description: Category breakdown fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/dashboard/recent-activity:
     get:
@@ -495,64 +1729,155 @@ paths:
       summary: Recent transaction activity
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 5
       responses:
         '200':
-          description: Recent activity fetched
+          description: Recent activity fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/dashboard/monthly-trends:
     get:
       tags: [Dashboard]
-      summary: Monthly trends (admin or analyst)
+      summary: Monthly trends
+      description: Admin or analyst only.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Monthly trends fetched
+          description: Monthly trends fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/dashboard/weekly-trends:
     get:
       tags: [Dashboard]
-      summary: Weekly trends (admin or analyst)
+      summary: Weekly trends
+      description: Admin or analyst only.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Weekly trends fetched
+          description: Weekly trends fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/dashboard/top-categories:
     get:
       tags: [Dashboard]
-      summary: Top categories (admin or analyst)
+      summary: Top categories
+      description: Admin or analyst only.
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 5
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [income, expense]
       responses:
         '200':
-          description: Top categories fetched
+          description: Top categories fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /api/v1/dashboard/comparison:
     get:
       tags: [Dashboard]
-      summary: Current period comparison (admin or analyst)
+      summary: Current period comparison
+      description: Admin or analyst only.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Comparison fetched
+          description: Comparison fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
