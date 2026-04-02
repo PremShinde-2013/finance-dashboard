@@ -1,5 +1,9 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const path = require('path');
+
+const deployedServerUrl = process.env.API_BASE_URL || process.env.RENDER_EXTERNAL_URL;
+const normalizedServerUrl = deployedServerUrl ? deployedServerUrl.replace(/\/$/, '') : null;
 
 const options = {
   definition: {
@@ -10,6 +14,14 @@ const options = {
       description: 'Backend API docs for Finance Dashboard (Auth, Users, Categories, Transactions, Dashboard).',
     },
     servers: [
+      ...(normalizedServerUrl
+        ? [
+            {
+              url: normalizedServerUrl,
+              description: 'Deployed server',
+            },
+          ]
+        : []),
       {
         url: 'http://localhost:3000',
         description: 'Local development server',
@@ -53,7 +65,10 @@ const options = {
       },
     },
   },
-  apis: ['./src/modules/**/*.routes.js'],
+  apis: [
+    path.join(__dirname, '../modules/**/*.routes.js'),
+    path.join(__dirname, '../docs/**/*.yaml'),
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
