@@ -168,13 +168,12 @@ export default function LoginPage() {
                                                     <div className="flex items-center justify-between">
                                                         <p className="font-semibold text-slate-900">{account.role}</p>
                                                         <span
-                                                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                                                account.accent === 'rose'
+                                                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${account.accent === 'rose'
                                                                     ? 'bg-rose-100 text-rose-700'
                                                                     : account.accent === 'indigo'
-                                                                      ? 'bg-indigo-100 text-indigo-700'
-                                                                      : 'bg-slate-200 text-slate-700'
-                                                            }`}
+                                                                        ? 'bg-indigo-100 text-indigo-700'
+                                                                        : 'bg-slate-200 text-slate-700'
+                                                                }`}
                                                         >
                                                             Reference
                                                         </span>
