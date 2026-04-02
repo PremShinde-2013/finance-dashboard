@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 220 20% 98%;
+  --foreground: 218 28% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 28% 12%;
+  --primary: 198 89% 48%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 35 95% 56%;
+  --secondary-foreground: 218 28% 12%;
+  --muted: 214 32% 91%;
+  --muted-foreground: 218 12% 38%;
+  --accent: 163 88% 39%;
+  --accent-foreground: 210 40% 98%;
+  --border: 214 24% 84%;
+  --input: 214 24% 84%;
+  --ring: 198 89% 48%;
+}
+
+.dark {
+  --background: 219 37% 10%;
+  --foreground: 210 40% 98%;
+  --card: 220 33% 14%;
+  --card-foreground: 210 40% 98%;
+  --primary: 198 89% 56%;
+  --primary-foreground: 219 37% 10%;
+  --secondary: 35 95% 56%;
+  --secondary-foreground: 218 28% 12%;
+  --muted: 220 22% 20%;
+  --muted-foreground: 214 18% 74%;
+  --accent: 163 88% 39%;
+  --accent-foreground: 210 40% 98%;
+  --border: 220 24% 28%;
+  --input: 220 24% 28%;
+  --ring: 198 89% 56%;
+}
+
+* {
+  @apply border-border;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  background-image: radial-gradient(circle at 10% 10%, rgba(14, 165, 233, 0.12), transparent 35%),
+    radial-gradient(circle at 90% 0%, rgba(245, 158, 11, 0.16), transparent 25%),
+    radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.12), transparent 30%);
+}
+
+@layer base {
+  .theme {
+    --animate-aurora: aurora 8s ease-in-out infinite alternate;
+  }
+}
+
+@theme inline {
+  @keyframes aurora {
+  0% {
+    background-position: 0% 50%;
+    transform: rotate(-5deg) scale(0.9);
+    }
+  25% {
+    background-position: 50% 100%;
+    transform: rotate(5deg) scale(1.1);
+    }
+  50% {
+    background-position: 100% 50%;
+    transform: rotate(-3deg) scale(0.95);
+    }
+  75% {
+    background-position: 50% 0%;
+    transform: rotate(3deg) scale(1.05);
+    }
+  100% {
+    background-position: 0% 50%;
+    transform: rotate(-5deg) scale(0.9);
+    }
+  }
+}
