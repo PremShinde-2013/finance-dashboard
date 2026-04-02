@@ -453,23 +453,6 @@ curl "http://localhost:3000/api/v1/transactions?page=1&limit=10&search=food" \
 - Refresh token flow reuses the same refresh token until expiry.
 - The frontend is intentionally light-mode only in this implementation.
 
-## 13. Screenshots / Demo
-
-Add screenshots here once you capture them:
-
-- Login page
-- Dashboard overview
-- Transactions table
-- Categories table
-- Users page
-- Swagger UI
-
-Suggested placement:
-- `docs/screenshots/login.png`
-- `docs/screenshots/dashboard.png`
-- `docs/screenshots/transactions.png`
-- `docs/screenshots/users.png`
-- `docs/screenshots/swagger.png`
 
 ## 14. Deployment
 
