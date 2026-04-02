@@ -472,68 +472,165 @@ CREATE INDEX ON transactions(is_deleted);
 | `user_agent` | TEXT | Browser/client metadata |
 | `created_at` | TIMESTAMPTZ | — |
 
-JSONB snapshots mean you can reconstruct the exact state of any record at any point in time. `INET` is a PostgreSQL native type — it validates IP addresses and allows subnet operations, which is cleaner than storing IPs as plain strings.
+### Key design decisions
+- Use `NUMERIC(15,2)` for currency precision.
+- Keep soft delete for recoverability and auditability.
+- Use JSONB for audit snapshots.
+- Index transaction fields that are used for filtering and reporting.
 
----
+## 12. Architecture Decisions
 
-## Assumptions and trade-offs
+### Why Soft Delete?
+Transactions and users support soft deletion (`is_deleted` flag + `deleted_at` timestamp) rather than permanent deletion for several reasons:
+- **Data Recovery:** Users can accidentally delete records and need recovery options without calling support.
+- **Audit Trail Completeness:** Deleted records remain in the audit log, preserving compliance history.
+- **Referential Integrity:** Related data structures (analytics, trends) remain consistent; hard deletes would break historical reports.
+- **GDPR Flexibility:** Hard delete is still available for admins when full data removal is required.
 
-Every project involves decisions where there's no objectively right answer. Here's what I chose and why.
+### Why Audit Logging?
+Every write operation (create, update, soft delete, hard delete, restore) is logged with:
+- **JSONB snapshots** of old and new state (enables before/after diffs)
+- **User identity, IP address, and user agent** (tracks who did what, when, and from where)
+- **Action type and entity reference** (supports searching for specific operation types)
 
-**Single organization, not multi-tenant.** The assignment describes a team-facing finance dashboard, not a SaaS product. Adding tenant isolation would add meaningful complexity without being asked for. If this became a real product, the schema would add an `org_id` column and row-level security policies in Supabase.
+This approach enables:
+- Root cause analysis of data changes without reading application logs
+- Compliance audits and regulatory reporting (e.g., "Who modified this transaction and why?")
+- User accountability for sensitive actions
 
-**Analyst soft-delete only, Admin hard-delete.** Soft delete is the safe default. Permanently removing financial data should require deliberate elevated access. This maps cleanly to how you'd want a real system to behave — junior staff can tidy things up, seniors have the override.
+### Why Backend Role-Based Filtering?
+Role-based access control is enforced at two layers:
+1. **Middleware (`role.middleware.js`):** Early rejection of forbidden users before controller logic runs
+2. **Service layer (`transactions.service.js`):** Data queries include role-based filters (e.g., only admins see deleted records)
 
-**`NUMERIC(15,2)` over `FLOAT`.** Floating-point arithmetic on currency is a well-known footgun. `0.1 + 0.2 !== 0.3` in IEEE 754. Financial amounts need exact decimal representation. NUMERIC is slower but correct — and correctness matters more here.
+This dual-layer approach prevents privilege escalation vulnerabilities where middleware is bypassed or misconfigured. A viewer cannot see analyst-only data even if authentication is compromised.
 
-**Global categories, not per-user.** In a team finance system, categories like "Salary" and "Office Supplies" are organization-level concepts. Per-user categories would fragment reporting and make cross-user analytics meaningless.
+### Why NUMERIC(15,2) for Currency?
+Most programming languages suffer from floating-point precision errors (0.1 + 0.2 ≠ 0.3). PostgreSQL's `NUMERIC` type provides exact decimal arithmetic, eliminating rounding errors in financial calculations.
 
-**Tags as `TEXT[]` instead of a join table.** A separate `transaction_tags` table would be more normalized. But for a feature like tags — flexible, lightweight, primarily used for search — the PostgreSQL array type with GIN indexing is simpler and fast enough. One less join in the hot read path.
+### Why JWT without Sessions?
+Stateless JWT tokens reduce server load and scale horizontally without shared session storage. Refresh token rotation ensures security: stolen tokens have limited lifetime, and rotating the refresh token invalidates all downstream access tokens.
 
-**Tokens in localStorage.** The more secure option is an httpOnly cookie, which would prevent XSS access. I chose localStorage for simplicity in this implementation because it's easier to demonstrate and doesn't require cookie configuration across different deployment environments. In a production system I'd switch to httpOnly cookies with a CSRF token.
+## 13. Assumptions & Trade-offs
 
-**INR only, current month as default dashboard range.** Single currency keeps the schema simple. The date default is a practical UX choice — most people reviewing a finance dashboard want to see the current period, not all time.
+- Single organization, not multi-tenant.
+- INR is the only supported currency in v1.
+- Categories are global, not per-user.
+- Analysts can soft-delete transactions, but only Admins can hard-delete or restore them.
+- Tokens are stored in localStorage on the client side for the current implementation.
+- No file uploads or receipt attachments in v1.
+- Dashboard date range defaults to the current month.
+- Refresh token flow reuses the same refresh token until expiry.
+- The frontend is intentionally light-mode only in this implementation.
 
----
+## 14. Access Control Model
 
-## Deployment
+Permission hierarchy from lowest to highest: **Viewer < Analyst < Admin**
 
-### API — Render
+### Viewer Role
+Viewers have **read-only access** to summaries and recent activity. They can:
+- Login and view their own profile
+- View aggregate dashboard summaries (total income, expense, net balance)
+- View recent transactions list with basic filtering and search
+- View available categories and category breakdowns
+- **Cannot:** Create, modify, or delete any transactions; access detailed analytics; manage users or categories
 
-The backend is deployed on Render's free tier. Add these environment variables in your Render service settings, then deploy from the `apps/api` directory.
+**Use case:** Internal stakeholder or client who needs visibility into overall financial health without the ability to modify data.
 
-Production base URL: `https://finance-dashboard-7cno.onrender.com/api/v1`  
-Swagger UI: `https://finance-dashboard-7cno.onrender.com/api/docs/`
+### Analyst Role
+Analysts have **read and write access** to transactions and analytics. They can:
+- All viewer permissions, plus:
+- Create and update transactions
+- Soft-delete ("remove") transactions they created
+- Access detailed monthly and weekly trend analytics
+- Run comparisons (this month vs. last month)
+- **Cannot:** Hard-delete or restore transactions; manage users; create/modify/delete categories; view audit logs
 
-### Web — Vercel
+**Use case:** Accountant or finance team member who logs transactions and needs to analyze spending patterns.
 
-The frontend is deployed on Vercel. Set `NEXT_PUBLIC_API_URL` to your production API URL, and deploy from the `apps/web` directory.
+### Admin Role
+Admins have **full access** including sensitive operations. They can:
+- All analyst permissions, plus:
+- Hard-delete transactions permanently (bypass soft delete recovery)
+- Restore soft-deleted transactions
+- Create, update, and delete categories
+- Manage users (create, update, change roles, toggle status)
+- View and search audit logs for compliance and investigation
+- Access deleted transaction records when querying with `include_deleted=true`
 
-Production URL: `https://finance-dashboard-web.vercel.app`
+**Use case:** System administrator, compliance officer, or finance controller responsible for data integrity and user management.
+
+## 15. Screenshots / Demo
+
+Add screenshots here once you capture them:
+
+- Login page
+- Dashboard overview
+- Transactions table
+- Categories table
+- Users page
+- Swagger UI
+
+Suggested placement:
+- `docs/screenshots/login.png`
+- `docs/screenshots/dashboard.png`
+- `docs/screenshots/transactions.png`
+- `docs/screenshots/users.png`
+- `docs/screenshots/swagger.png`
+
+## 16. Deployment
+
+### API
+- **Suggested hosting:** Railway or Render
+- **Production base URL:** https://finance-dashboard-7cno.onrender.com/api/v1
+- **Production Swagger UI:** https://finance-dashboard-7cno.onrender.com/api/docs/
+- **Platform:** Currently deployed on Render free tier
+
+#### Render Free Tier Considerations
+Render's free tier spins down inactive services after 15 minutes of inactivity. When a request arrives:
+- The first request may take 2-3 minutes while the service wakes up (cold start)
+- Subsequent requests complete normally while the service stays awake
+- No data loss occurs; only a latency delay
+
+**Frontend Cold-Start UX:**
+The frontend displays an animated loading card ("Hang tight! Your request is on its way! ⏳") during cold-start delays, preventing user confusion. The card:
+- Appears automatically when requests are pending
+- Displays a moving progress bar animation
+- Disappears once the backend responds
+- Includes messaging about Render free tier wake-up times
+
+**Recommendation:** For production use, upgrade to a paid tier or use a service with guaranteed uptime such as Railway or AWS Elastic Beanstalk.
+
+### Web
+- **Suggested hosting:** Vercel
+- **Production base URL:** https://finance-dashboard-web.vercel.app
+- **Production login URL:** https://finance-dashboard-web.vercel.app/login
+- **Note:** Next.js requires Edge Functions or Serverless Functions for API routes; this app uses a separate Express backend, so Vercel hosting is for the UI only.
 
 ### Post-deploy checklist
+- ✅ Set production environment variables (see Section 7)
+- ✅ Apply the Supabase schema migrations in order (001, 002)
+- ✅ Run the seed script in production if needed: `npm run seed`
+- ✅ Verify Swagger docs at `/api/docs` and test role-based access with demo accounts
+- ✅ Monitor cold-start wake times in production logs
+- ✅ Test frontend cold-start UX by letting the backend sleep and making a new request
 
-- [ ] Set all production environment variables
-- [ ] Apply Supabase schema (migrations folder, in order)
-- [ ] Run seed script against production database if needed
-- [ ] Verify Swagger docs load correctly
-- [ ] Test all three role tiers with the seed accounts
+## 17. Running Tests
 
----
-
-## Running tests
+### API tests
 
 ```bash
-# Run all API tests
 npm run test --workspace=apps/api
+```
 
-# Watch mode during development
+### Watch mode
+
+```bash
 npm run test:watch --workspace=apps/api
 ```
 
-Tests cover auth routes (register, login, token refresh) and transaction routes (CRUD, role enforcement, filter behavior) using Jest and Supertest.
+## Additional Notes
 
-
----
-
-*Built by Prem Shinde — questions, feedback, or just want to talk backend architecture? Reach out.*
+- Swagger docs are exposed from the backend at `/api/docs`.
+- The root workspace uses npm workspaces, so `npm run dev` starts both apps together.
+- The web app runs on port `3001` and the API runs on port `3000` by default.
