@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Tooltip as RechartsTooltip } from 'recharts';
-import type { TooltipProps } from 'recharts/types/component/DefaultTooltipContent';
 
 import { cn } from '@/lib/utils';
 
@@ -34,6 +33,23 @@ type ChartContainerProps = React.HTMLAttributes<HTMLDivElement> & {
     config: ChartConfig;
 };
 
+type ChartTooltipItem = {
+    dataKey?: string | number;
+    name?: string;
+    value?: number | string | null;
+    color?: string;
+};
+
+type ChartTooltipContentProps = {
+    active?: boolean;
+    payload?: ChartTooltipItem[];
+    label?: string | number | null;
+    indicator?: 'dot' | 'line' | 'dashed';
+    labelFormatter?: (value: string) => string;
+    valueFormatter?: (value: number) => string;
+    className?: string;
+};
+
 export function ChartContainer({ config, className, style, children, ...props }: ChartContainerProps) {
     const colorVars = React.useMemo(() => {
         return Object.entries(config).reduce<Record<string, string>>((accumulator, [key, value]) => {
@@ -58,13 +74,6 @@ export function ChartTooltip(props: React.ComponentPropsWithoutRef<typeof Rechar
     return <RechartsTooltip {...props} />;
 }
 
-type ChartTooltipContentProps = TooltipProps<number, string> & {
-    indicator?: 'dot' | 'line' | 'dashed';
-    labelFormatter?: (value: string) => string;
-    valueFormatter?: (value: number) => string;
-    className?: string;
-};
-
 export function ChartTooltipContent({
     active,
     payload,
@@ -86,7 +95,7 @@ export function ChartTooltipContent({
         <div className={cn('rounded-lg border bg-background p-3 text-sm shadow-sm', className)}>
             {displayLabel ? <div className="mb-2 font-medium text-foreground">{displayLabel}</div> : null}
             <div className="space-y-1">
-                {payload.map((item) => {
+                {payload.map((item: ChartTooltipItem) => {
                     const dataKey = String(item.dataKey ?? item.name ?? '');
                     const entry = config[dataKey];
                     const value = typeof item.value === 'number' ? item.value : Number(item.value);
