@@ -51,7 +51,7 @@ export function BackendWarmupCard({ visible, className }: BackendWarmupCardProps
                             </span>
                             <span className="text-xs font-semibold uppercase tracking-[0.24em]">Please wait</span>
                         </div>
-                        <CardTitle className="text-2xl text-slate-900">Hang tight! Your request is on its way! ⏳</CardTitle>
+                        <CardTitle className="text-2xl text-slate-900">Hang tight! Your request is on its way! </CardTitle>
                     </CardHeader>
 
                     <CardContent className="relative space-y-4 text-sm leading-6 text-slate-700">
@@ -65,7 +65,7 @@ export function BackendWarmupCard({ visible, className }: BackendWarmupCardProps
                         </div>
 
                         <p>
-                            Don&apos;t worry - everything will be up and running smoothly in no time! ⏱️
+                            Don&apos;t worry - everything will be up and running smoothly in no time!
                         </p>
 
                         <div className="relative h-2 overflow-hidden rounded-full bg-amber-100/80">
@@ -77,7 +77,7 @@ export function BackendWarmupCard({ visible, className }: BackendWarmupCardProps
                         </div>
 
                         <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-white/80 px-3 py-2 text-amber-800">
-                            <span>Thank you for your patience! 🌟</span>
+                            <span>Thank you for your patience! </span>
                             <span className="text-xs font-semibold uppercase tracking-[0.18em]">Loading</span>
                         </div>
                     </CardContent>

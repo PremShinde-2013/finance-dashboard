@@ -34,7 +34,7 @@ export function Sidebar() {
     };
 
     return (
-        <aside className="hidden w-72 border-r border-white/40 bg-white/65 p-5 backdrop-blur-xl lg:block">
+        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-white/40 bg-white/65 p-5 backdrop-blur-xl lg:block">
             <div className="mb-8">
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Finance OS</p>
                 <h2 className="text-xl font-semibold">Dashboard</h2>

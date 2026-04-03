@@ -208,13 +208,13 @@ export default function TransactionsPage() {
                 <input value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} placeholder="Max amount" className="rounded-md border px-3 py-2 text-sm" />
 
                 {isAdmin ? (
-                    <label className="col-span-2 flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                    <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm md:col-span-2">
                         <input type="checkbox" checked={includeDeleted} onChange={(e) => setIncludeDeleted(e.target.checked)} />
                         Include deleted transactions
                     </label>
                 ) : null}
 
-                <div className="col-span-2 flex gap-2 md:justify-end">
+                <div className="flex flex-col gap-2 sm:flex-row md:col-span-2 md:justify-end">
                     <button
                         onClick={() => {
                             setPage(1);
@@ -239,7 +239,72 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border bg-white/70">
+            <div className="space-y-3 md:hidden">
+                {isLoading ? (
+                    Array.from({ length: 4 }).map((_, index) => (
+                        <div key={`mobile-skeleton-${index}`} className="rounded-xl border bg-white/80 p-3">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="mt-2 h-4 w-40" />
+                            <Skeleton className="mt-3 h-16 w-full" />
+                        </div>
+                    ))
+                ) : rows.length === 0 ? (
+                    <div className="rounded-xl border bg-white/80 px-3 py-6 text-center text-sm text-muted-foreground">No transactions found.</div>
+                ) : (
+                    rows.map((row: Record<string, unknown>) => {
+                        const category = ((row.categories as CategoryMeta | undefined)
+                            || categoryById.get(String(row.category_id || ''))) as CategoryMeta | undefined;
+                        const CategoryIcon = getCategoryIcon(category?.icon);
+                        const color = category?.color || '#94A3B8';
+
+                        return (
+                            <div key={`mobile-row-${String(row.id)}`} className="rounded-xl border bg-white/80 p-3 shadow-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">{String(row.date || '-')}</p>
+                                        <p className="mt-1 text-sm font-medium text-slate-900">{String(row.description || '-')}</p>
+                                    </div>
+                                    <Badge variant={row.type === 'income' ? 'success' : 'danger'}>{String(row.type || '')}</Badge>
+                                </div>
+
+                                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border bg-slate-50/70 px-3 py-2">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white">
+                                            <CategoryIcon className="h-4 w-4" style={{ color }} />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-medium text-slate-800">{category?.name || '-'}</p>
+                                            <p className="text-[11px] text-slate-500">Category</p>
+                                        </div>
+                                    </div>
+                                    <p className={row.type === 'income' ? 'text-right text-sm font-semibold text-emerald-600' : 'text-right text-sm font-semibold text-rose-600'}>
+                                        {formatCurrency(Number(row.amount || 0))}
+                                    </p>
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {canMutate && !row.is_deleted ? (
+                                        <>
+                                            <button className="rounded border px-2 py-1 text-xs" onClick={() => openEdit(row)}>Edit</button>
+                                            <button className="rounded border border-amber-300 px-2 py-1 text-xs text-amber-700" onClick={() => handleSoftDelete(String(row.id))}>Soft Delete</button>
+                                        </>
+                                    ) : null}
+
+                                    {isAdmin && row.is_deleted ? (
+                                        <button className="rounded border border-emerald-300 px-2 py-1 text-xs text-emerald-700" onClick={() => handleRestore(String(row.id))}>Restore</button>
+                                    ) : null}
+
+                                    {isAdmin ? (
+                                        <button className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700" onClick={() => handleHardDelete(String(row.id))}>Hard Delete</button>
+                                    ) : null}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl border bg-white/70 md:block">
                 <table className="min-w-full text-sm">
                     <thead className="bg-slate-100/80 text-left">
                         <tr>
@@ -330,9 +395,9 @@ export default function TransactionsPage() {
                 </table>
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-sm">
+            <div className="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-muted-foreground">Page {meta?.page || page} of {meta?.totalPages || 1} • Total {meta?.total || rows.length}</p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 sm:justify-end">
                     <button
                         onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                         disabled={(meta?.page || page) <= 1}

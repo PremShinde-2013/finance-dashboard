@@ -31,12 +31,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#e0f2fe,transparent_42%),radial-gradient(circle_at_bottom_right,#fef3c7,transparent_38%),#f8fafc]">
-            <div className="flex min-h-screen">
+        <div className="h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,#e0f2fe,transparent_42%),radial-gradient(circle_at_bottom_right,#fef3c7,transparent_38%),#f8fafc]">
+            <div className="flex h-full">
                 <Sidebar />
-                <div className="flex min-h-screen w-full flex-col">
+                <div className="flex h-full w-full flex-col overflow-hidden">
                     <Topbar onMenuClick={() => setOpen(true)} />
-                    <main className="flex-1 p-4 md:p-6">{children}</main>
+                    <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
                 </div>
             </div>
             <MobileSidebar open={open} onClose={() => setOpen(false)} />

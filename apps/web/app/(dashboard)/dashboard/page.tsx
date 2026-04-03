@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Wallet, TrendingUp, TrendingDown, ListOrdered } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie } from 'recharts';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { MagicCard } from '@/components/ui/magic-card';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,6 +17,8 @@ import {
     useDashboardSummary,
 } from '@/hooks/useDashboard';
 import { useAuthStore } from '@/store/authStore';
+
+const PIE_COLORS = ['#EF4444', '#F97316', '#F59E0B', '#EC4899', '#A855F7', '#3B82F6', '#10B981', '#6B7280'];
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value || 0);
@@ -33,22 +35,75 @@ function formatPercent(value: number) {
     return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
+function formatDateForApi(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatMonthYear(value: string) {
+    if (!value) return '';
+    const [year, month] = value.split('-');
+    const date = new Date(Number(year), Number(month) - 1, 1);
+    return date.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+}
+
 export default function DashboardPage() {
     const userRole = useAuthStore((state) => state.user?.role || 'viewer');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
     const range = useMemo(() => ({ startDate, endDate }), [startDate, endDate]);
+    const expenseCategoryRange = useMemo(() => {
+        if (startDate || endDate) {
+            return { startDate, endDate };
+        }
+
+        const today = new Date();
+        const sixMonthWindowStart = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+
+        return {
+            startDate: formatDateForApi(sixMonthWindowStart),
+            endDate: formatDateForApi(today),
+        };
+    }, [startDate, endDate]);
     const canViewAnalytics = userRole === 'admin' || userRole === 'analyst';
 
     const { data: summary, isLoading: summaryLoading } = useDashboardSummary(range);
     const { data: monthlyTrends = [], isLoading: monthlyLoading } = useDashboardMonthlyTrends(canViewAnalytics);
-    const { data: categoryBreakdown = [], isLoading: categoryLoading } = useDashboardCategoryBreakdown(range);
+    const { data: categoryBreakdown = [], isLoading: categoryLoading } = useDashboardCategoryBreakdown(expenseCategoryRange);
     const { data: recentActivity = [], isLoading: recentLoading } = useDashboardRecentActivity(5);
     const { data: comparison, isLoading: comparisonLoading } = useDashboardComparison(canViewAnalytics);
 
     const expenseBreakdown = categoryBreakdown.filter((item: { type: string; }) => item.type === 'expense');
-    const pieColors = ['#EF4444', '#F97316', '#F59E0B', '#EC4899', '#A855F7', '#3B82F6', '#10B981', '#6B7280'];
+    const pieChartData = useMemo(
+        () =>
+            expenseBreakdown.map((item: { category_id?: string; name?: string; total: number }, index: number) => ({
+                category: item.name || 'Uncategorized',
+                total: item.total || 0,
+                fill: PIE_COLORS[index % PIE_COLORS.length],
+            })),
+        [expenseBreakdown],
+    );
+    const expenseRangeLabel = useMemo(() => {
+        const from = formatMonthYear(expenseCategoryRange.startDate || '');
+        const to = formatMonthYear(expenseCategoryRange.endDate || '');
+
+        if (from && to) {
+            return `${from} to ${to}`;
+        }
+
+        if (from) {
+            return `${from} onwards`;
+        }
+
+        if (to) {
+            return `Up to ${to}`;
+        }
+
+        return '';
+    }, [expenseCategoryRange]);
     const showWarmupCard = summaryLoading && !summary;
 
     return (
@@ -175,16 +230,22 @@ export default function DashboardPage() {
                             <h3 className="text-sm font-semibold">Expense by Category</h3>
                             {categoryLoading ? <Skeleton className="h-4 w-16" /> : null}
                         </div>
+                        {expenseRangeLabel ? (
+                            <p className="mb-3 text-xs text-muted-foreground">Showing: {expenseRangeLabel}</p>
+                        ) : null}
 
                         {canViewAnalytics ? (
                             <div className="h-[280px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
-                                        <Pie data={expenseBreakdown} dataKey="total" nameKey="name" innerRadius={56} outerRadius={96}>
-                                            {expenseBreakdown.map((item: { category_id: string; }, index: number) => (
-                                                <Cell key={item.category_id || index} fill={pieColors[index % pieColors.length]} />
-                                            ))}
-                                        </Pie>
+                                        <Pie
+                                            data={pieChartData}
+                                            dataKey="total"
+                                            nameKey="category"
+                                            label={({ category }) => String(category || '')}
+                                            innerRadius={56}
+                                            outerRadius={96}
+                                        />
                                         <Tooltip formatter={(value: number) => formatCurrency(value)} />
                                     </PieChart>
                                 </ResponsiveContainer>
